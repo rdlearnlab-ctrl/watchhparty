@@ -1,23 +1,34 @@
-// apps/web/src/hooks/useSocket.ts
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_SERVER_URL = 'http://localhost:4000';
+// This explicitly points to your Render backend in production
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
 
 export const useSocket = (roomId: string, username: string) => {
-  const socket = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    socket.current = io(SOCKET_SERVER_URL);
+    // Initialize the socket connection with the correct transports
+    const socketIo = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+    });
 
-    socket.current.on('connect', () => {
-      socket.current?.emit('join-room', roomId, username);
+    setSocket(socketIo);
+
+    // Only join the room once the connection is formally established
+    socketIo.on('connect', () => {
+      console.log('Successfully connected to Socket server:', socketIo.id);
+      socketIo.emit('join-room', roomId, username);
+    });
+
+    socketIo.on('connect_error', (err) => {
+      console.error('Socket connection error:', err.message);
     });
 
     return () => {
-      socket.current?.disconnect();
+      socketIo.disconnect();
     };
   }, [roomId, username]);
 
-  return socket.current;
+  return socket;
 };
