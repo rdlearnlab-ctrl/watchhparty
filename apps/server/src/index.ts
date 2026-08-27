@@ -1,8 +1,8 @@
 // apps/server/src/index.ts
-import * as express from 'express';
-import * as http from 'http';
+import express from 'express';
+import http from 'http';
 import { Server } from 'socket.io';
-import * as cors from 'cors';
+import cors from 'cors';
 import { handleRoomEvents } from './sockets/roomHandler';
 
 const app = express();
