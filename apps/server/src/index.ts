@@ -1,8 +1,8 @@
 // apps/server/src/index.ts
-import express from 'express';
-import http from 'http';
+import * as express from 'express';
+import * as http from 'http';
 import { Server } from 'socket.io';
-import cors from 'cors';
+import * as cors from 'cors';
 import { handleRoomEvents } from './sockets/roomHandler';
 
 const app = express();
@@ -11,9 +11,11 @@ app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // For development. Lock this down in production.
+    origin: process.env.CLIENT_URL || '*', // Uses environment variable or allows all
     methods: ['GET', 'POST'],
   },
+  maxHttpBufferSize: 1e7, // 10 MB limit to prevent large Base64 canvas frames from dropping
+  transports: ['websocket', 'polling'],
 });
 
 io.on('connection', (socket) => {
