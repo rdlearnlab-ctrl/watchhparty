@@ -1,0 +1,16 @@
+{
+  "name": "watch-party-app",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=apps/server\" \"npm run dev --workspace=apps/web\"",
+    "build": "npm run build --workspaces",
+    "start": "concurrently \"npm run start --workspace=apps/server\" \"npm run start --workspace=apps/web\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

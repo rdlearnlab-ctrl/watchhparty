@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: theme('colors.bgBase');
+  color: theme('colors.dark');
+  background-image: radial-gradient(theme('colors.dark') 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -19px -19px;
+}
+
+* {
+  transition: box-shadow 0.1s ease-in-out, transform 0.1s ease-in-out;
+}
