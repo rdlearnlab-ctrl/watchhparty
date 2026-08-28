@@ -1,115 +1,138 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { NeoContainer } from '@/components/ui/NeoContainer';
-import { NeoButton } from '@/components/ui/NeoButton';
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+const BACKEND_URL = 'https://watchparty-wqd2.onrender.com';
+
+interface PublicRoom {
+  roomId: string;
+  userCount: number;
+}
 
 export default function LobbyPage() {
   const router = useRouter();
-  const [username, setUsername] = useState<string>('Player');
-  const [roomIdInput, setRoomIdInput] = useState('');
-  const [publicRooms, setPublicRooms] = useState<string[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
+  const [privateCode, setPrivateCode] = useState('');
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUsername(user.displayName || user.email?.split('@')[0] || 'Player');
-      } else {
-        router.push('/login');
-      }
+    const socketIo = io(BACKEND_URL, {
+      transports: ['websocket', 'polling'],
+      withCredentials: false,
     });
 
-    const newSocket = io(SOCKET_URL);
-    setSocket(newSocket);
+    setSocket(socketIo);
 
-    newSocket.emit('get-public-rooms');
-    newSocket.on('public-rooms-list', (rooms: string[]) => {
+    socketIo.on('connect', () => {
+      // Request active rooms list upon connection
+      socketIo.emit('get-public-rooms');
+    });
+
+    // Listen for live room updates
+    socketIo.on('public-rooms-update', (rooms: PublicRoom[]) => {
       setPublicRooms(rooms);
     });
 
     return () => {
-      unsubscribe();
-      newSocket.disconnect();
+      socketIo.disconnect();
     };
-  }, [router]);
+  }, []);
 
   const handleCreateRoom = (isPublic: boolean) => {
     const newRoomId = Math.random().toString(36).substring(2, 9);
-    socket?.emit('create-room', newRoomId, isPublic);
+    if (socket) {
+      socket.emit('create-room', { roomId: newRoomId, isPublic });
+    }
     router.push(`/room/${newRoomId}`);
   };
 
-  const handleJoinRoom = (e: React.FormEvent) => {
+  const handleJoinPrivate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (roomIdInput.trim()) {
-      router.push(`/room/${roomIdInput.trim()}`);
+    if (privateCode.trim()) {
+      router.push(`/room/${privateCode.trim()}`);
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut(auth);
-    router.push('/login');
-  };
-
   return (
-    <main className="min-h-screen p-6 md:p-12 flex flex-col items-center bg-bgBase">
-      <div className="w-full max-w-4xl flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-black text-dark">Welcome, {username}!</h1>
-        <NeoButton colorClass="bg-red-400 py-2 px-4 text-sm" onClick={handleSignOut}>
-          Sign Out
-        </NeoButton>
-      </div>
+    <div className="min-h-screen bg-[#F4EBE1] p-8 text-neutral-800">
+      {/* Lobby header and cards */}
+      <div className="max-w-4xl mx-auto space-y-6">
+        <h1 className="text-3xl font-black text-center">Welcome!</h1>
 
-      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="flex flex-col gap-6">
-          <NeoContainer title="Create a Room">
-            <div className="flex flex-col gap-4">
-              <NeoButton colorClass="bg-primary py-3" onClick={() => handleCreateRoom(true)}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Create Rooms */}
+          <div className="bg-[#66C6BA] border-2 border-black rounded-2xl p-6 shadow-[4px_4px_0px_0px_#000]">
+            <h2 className="text-xl font-bold mb-4">Create a Room</h2>
+            <div className="space-y-3">
+              <button
+                onClick={() => handleCreateRoom(true)}
+                className="w-full py-3 bg-[#FF6B6B] hover:bg-[#ff5252] border-2 border-black rounded-xl font-bold transition shadow-[2px_2px_0px_0px_#000]"
+              >
                 Create Public Room
-              </NeoButton>
-              <NeoButton colorClass="bg-secondary py-3" onClick={() => handleCreateRoom(false)}>
+              </button>
+              <button
+                onClick={() => handleCreateRoom(false)}
+                className="w-full py-3 bg-[#4ECDC4] hover:bg-[#3dbdb4] border-2 border-black rounded-xl font-bold transition shadow-[2px_2px_0px_0px_#000]"
+              >
                 Create Private Room
-              </NeoButton>
+              </button>
             </div>
-          </NeoContainer>
+          </div>
 
-          <NeoContainer title="Join Private Room">
-            <form onSubmit={handleJoinRoom} className="flex gap-2">
-              <input
-                type="text"
-                value={roomIdInput}
-                onChange={(e) => setRoomIdInput(e.target.value)}
-                placeholder="Enter Room Code..."
-                className="flex-1 p-2 border-2 border-dark rounded-neo outline-none"
-              />
-              <NeoButton colorClass="bg-accent py-2 px-4" type="submit">Join</NeoButton>
-            </form>
-          </NeoContainer>
+          {/* Active Public Rooms */}
+          <div className="bg-[#66C6BA] border-2 border-black rounded-2xl p-6 shadow-[4px_4px_0px_0px_#000]">
+            <h2 className="text-xl font-bold mb-4">Active Public Rooms</h2>
+            <div className="bg-white border-2 border-black rounded-xl p-4 min-h-[160px] max-h-[220px] overflow-y-auto">
+              {publicRooms.length === 0 ? (
+                <p className="text-neutral-500 text-center py-8 text-sm">
+                  No public rooms available right now.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {publicRooms.map((room) => (
+                    <div
+                      key={room.roomId}
+                      className="flex items-center justify-between p-2 bg-neutral-100 border border-black rounded-lg"
+                    >
+                      <span className="font-mono text-sm font-semibold">
+                        Room: {room.roomId} ({room.userCount} online)
+                      </span>
+                      <button
+                        onClick={() => router.push(`/room/${room.roomId}`)}
+                        className="px-3 py-1 bg-[#FFE66D] hover:bg-[#ffd93d] border border-black rounded-md text-xs font-bold shadow-[1px_1px_0px_0px_#000]"
+                      >
+                        Join
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <NeoContainer title="Active Public Rooms" className="h-[400px] overflow-y-auto">
-          {publicRooms.length === 0 ? (
-            <p className="text-dark/50 text-center mt-10 font-bold">No public rooms available right now.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {publicRooms.map((room) => (
-                <div key={room} className="p-4 border-2 border-dark rounded-neo bg-white flex justify-between items-center">
-                  <span className="font-bold">Room: {room}</span>
-                  <NeoButton colorClass="bg-primary py-1 px-4 text-xs" onClick={() => router.push(`/room/${room}`)}>
-                    Join
-                  </NeoButton>
-                </div>
-              ))}
-            </div>
-          )}
-        </NeoContainer>
+        {/* Join Private Room */}
+        <div className="bg-[#66C6BA] border-2 border-black rounded-2xl p-6 shadow-[4px_4px_0px_0px_#000]">
+          <h2 className="text-xl font-bold mb-4">Join Private Room</h2>
+          <form onSubmit={handleJoinPrivate} className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Enter Room Code..."
+              value={privateCode}
+              onChange={(e) => setPrivateCode(e.target.value)}
+              className="flex-1 px-4 py-2 border-2 border-black rounded-xl outline-none"
+            />
+            <button
+              type="submit"
+              className="px-6 py-2 bg-[#FFE66D] hover:bg-[#ffd93d] border-2 border-black rounded-xl font-bold shadow-[2px_2px_0px_0px_#000]"
+            >
+              Join
+            </button>
+          </form>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
