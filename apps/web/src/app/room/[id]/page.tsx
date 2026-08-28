@@ -9,9 +9,6 @@ import { NeoContainer } from '@/components/ui/NeoContainer';
 import { NeoButton } from '@/components/ui/NeoButton';
 import { VideoPlayer } from '@/components/media/VideoPlayer';
 import LudoBoard from '@/components/games/LudoBoard';
-import { TriviaGame } from '@/components/games/TriviaGame';
-import { ConnectFour } from '@/components/games/ConnectFour';
-import { WordBomb } from '@/components/games/WordBomb';
 
 export default function RoomPage({ params }: { params: { roomId?: string; id?: string } }) {
   const router = useRouter();
@@ -37,8 +34,7 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
   const [messages, setMessages] = useState<{ sender: string; text: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Added new games to the state
-  const [activeMedia, setActiveMedia] = useState<'youtube' | 'screenshare' | 'ludo' | 'trivia' | 'connect4' | 'wordbomb'>('youtube');
+  const [activeMedia, setActiveMedia] = useState<'youtube' | 'screenshare' | 'ludo'>('youtube');
   const [videoUrl, setVideoUrl] = useState('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
   const [urlInput, setUrlInput] = useState('');
 
@@ -54,7 +50,7 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
   const lastCamFrames = useRef<Record<string, string>>({});
 
   // Adjustable Camera Layout State
-  const [camSize, setCamSize] = useState<number>(120); 
+  const [camSize, setCamSize] = useState<number>(120); // Width/Height in px
   const [isCamDrawerOpen, setIsCamDrawerOpen] = useState(true);
 
   const [isMicOn, setIsMicOn] = useState(false);
@@ -234,6 +230,16 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
     }
   };
 
+  const toggleLudo = () => setActiveMedia(activeMedia === 'ludo' ? 'youtube' : 'ludo');
+
+  useEffect(() => {
+    return () => {
+      localCamStream?.getTracks().forEach((t) => t.stop());
+      localScreenStream?.getTracks().forEach((t) => t.stop());
+      localMicStream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [localCamStream, localScreenStream, localMicStream]);
+
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (chatInput.trim() && socket) {
@@ -251,14 +257,6 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
       setUrlInput('');
     }
   };
-
-  useEffect(() => {
-    return () => {
-      localCamStream?.getTracks().forEach((t) => t.stop());
-      localScreenStream?.getTracks().forEach((t) => t.stop());
-      localMicStream?.getTracks().forEach((t) => t.stop());
-    };
-  }, [localCamStream, localScreenStream, localMicStream]);
 
   if (!isMounted) return <main className="min-h-screen p-6 md:p-12 flex flex-col xl:flex-row gap-6"></main>;
 
@@ -282,12 +280,10 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
           </form>
 
           <div className="w-full aspect-video bg-black rounded-neo border-2 border-dark flex items-center justify-center relative overflow-hidden">
-            {/* YouTube Player */}
             <div className={`w-full h-full ${activeMedia === 'youtube' ? 'block' : 'hidden'}`}>
               <VideoPlayer socket={socket} url={videoUrl} />
             </div>
 
-            {/* Screen Sharing */}
             <video
               ref={localScreenVideoRef}
               autoPlay
@@ -301,35 +297,16 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
               alt="Screen Share"
             />
 
-            {/* Games Overlay */}
             {activeMedia === 'ludo' && (
               <div className="w-full h-full absolute inset-0 z-10 bg-white">
                 <LudoBoard socket={socket} />
-              </div>
-            )}
-            
-            {activeMedia === 'trivia' && (
-              <div className="w-full h-full absolute inset-0 z-10 bg-white">
-                <TriviaGame socket={socket} />
-              </div>
-            )}
-
-            {activeMedia === 'connect4' && (
-              <div className="w-full h-full absolute inset-0 z-10 bg-white">
-                <ConnectFour socket={socket} />
-              </div>
-            )}
-
-            {activeMedia === 'wordbomb' && (
-              <div className="w-full h-full absolute inset-0 z-10 bg-white">
-                <WordBomb socket={socket} />
               </div>
             )}
           </div>
         </NeoContainer>
 
         <NeoContainer title="Apps & Games">
-          <div className="flex flex-wrap gap-3 items-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 items-center">
             <select
               value={screenRes}
               onChange={(e) => setScreenRes(Number(e.target.value))}
@@ -366,22 +343,11 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
               {isMicOn ? 'Mute Mic' : 'Unmute Mic'}
             </NeoButton>
 
-            {/* Game Toggles */}
-            <NeoButton colorClass={activeMedia === 'ludo' ? 'bg-primary text-black' : 'bg-accent text-black'} onClick={() => setActiveMedia(activeMedia === 'ludo' ? 'youtube' : 'ludo')}>
-              Ludo
+            <NeoButton colorClass={activeMedia === 'ludo' ? 'bg-primary text-black' : 'bg-accent text-black'} onClick={toggleLudo}>
+              {activeMedia === 'ludo' ? 'Close Ludo' : 'Ludo'}
             </NeoButton>
 
-            <NeoButton colorClass={activeMedia === 'trivia' ? 'bg-primary text-black' : 'bg-[#FF9F1C] text-black'} onClick={() => setActiveMedia(activeMedia === 'trivia' ? 'youtube' : 'trivia')}>
-              Trivia
-            </NeoButton>
-
-            <NeoButton colorClass={activeMedia === 'connect4' ? 'bg-primary text-black' : 'bg-[#2EC4B6] text-black'} onClick={() => setActiveMedia(activeMedia === 'connect4' ? 'youtube' : 'connect4')}>
-              Connect 4
-            </NeoButton>
-
-            <NeoButton colorClass={activeMedia === 'wordbomb' ? 'bg-primary text-black' : 'bg-[#E71D36] text-white'} onClick={() => setActiveMedia(activeMedia === 'wordbomb' ? 'youtube' : 'wordbomb')}>
-              Word Bomb
-            </NeoButton>
+            <NeoButton colorClass="bg-primary text-black">Chess</NeoButton>
           </div>
         </NeoContainer>
       </div>
