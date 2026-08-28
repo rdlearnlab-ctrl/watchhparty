@@ -79,12 +79,12 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
       const blob = new Blob([chunk], { type: 'audio/webm' });
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
-      audio.play().catch(e => console.warn('Audio autoplay blocked', e));
+      audio.play().catch((e) => console.warn('Audio autoplay blocked', e));
     });
 
     socket.on('share-stopped', () => setActiveMedia('youtube'));
-    socket.on('user-camera-stopped', (userId) => setRemoteCameras((prev) => prev.filter(id => id !== userId)));
-    socket.on('user-disconnected', (userId) => setRemoteCameras((prev) => prev.filter(id => id !== userId)));
+    socket.on('user-camera-stopped', (userId) => setRemoteCameras((prev) => prev.filter((id) => id !== userId)));
+    socket.on('user-disconnected', (userId) => setRemoteCameras((prev) => prev.filter((id) => id !== userId)));
 
     return () => {
       socket.off('receive-message');
@@ -127,7 +127,7 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
 
   const toggleScreenShare = async () => {
     if (isSharing) {
-      localScreenStream?.getTracks().forEach(t => t.stop());
+      localScreenStream?.getTracks().forEach((t) => t.stop());
       setLocalScreenStream(null);
       setIsSharing(false);
       setActiveMedia('youtube');
@@ -136,7 +136,7 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
       try {
         const calcWidth = Math.floor((screenRes * 16) / 9);
         const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: { width: { ideal: calcWidth }, height: { ideal: screenRes }, frameRate: { ideal: screenFps } }
+          video: { width: { ideal: calcWidth }, height: { ideal: screenRes }, frameRate: { ideal: screenFps } },
         });
 
         setLocalScreenStream(stream);
@@ -185,7 +185,7 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
 
   const toggleCamera = async () => {
     if (isCamOn) {
-      localCamStream?.getTracks().forEach(t => t.stop());
+      localCamStream?.getTracks().forEach((t) => t.stop());
       setLocalCamStream(null);
       setIsCamOn(false);
       socket?.emit('camera-stopped');
@@ -203,7 +203,7 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
   const toggleMic = async () => {
     if (isMicOn) {
       mediaRecorderRef.current?.stop();
-      localMicStream?.getTracks().forEach(t => t.stop());
+      localMicStream?.getTracks().forEach((t) => t.stop());
       setLocalMicStream(null);
       setIsMicOn(false);
     } else {
@@ -230,9 +230,9 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
 
   useEffect(() => {
     return () => {
-      localCamStream?.getTracks().forEach(t => t.stop());
-      localScreenStream?.getTracks().forEach(t => t.stop());
-      localMicStream?.getTracks().forEach(t => t.stop());
+      localCamStream?.getTracks().forEach((t) => t.stop());
+      localScreenStream?.getTracks().forEach((t) => t.stop());
+      localMicStream?.getTracks().forEach((t) => t.stop());
     };
   }, [localCamStream, localScreenStream, localMicStream]);
 
@@ -257,7 +257,7 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
   if (!isMounted) return <main className="min-h-screen p-6 md:p-12 flex flex-col xl:flex-row gap-6"></main>;
 
   return (
-    <main className="min-h-screen p-6 md:p-12 flex flex-col xl:flex-row gap-6 bg-[#F4EBE1]">
+    <main className="min-h-screen p-6 md:p-12 flex flex-col xl:flex-row gap-6">
       <div className="flex-1 flex flex-col gap-6">
         <NeoContainer title={`Room: ${roomId} | Big Screen`}>
           <form onSubmit={handleLoadVideo} className="flex gap-2 mb-4">
@@ -266,9 +266,11 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="Paste YouTube link here to watch together..."
-              className="flex-1 p-2 border-2 border-dark rounded-neo outline-none"
+              className="flex-1 p-2 border-2 border-dark rounded-neo outline-none bg-white text-black"
             />
-            <NeoButton colorClass="bg-accent py-2 px-4" type="submit">Play Video</NeoButton>
+            <NeoButton colorClass="bg-accent py-2 px-4" type="submit">
+              Play Video
+            </NeoButton>
           </form>
 
           <div className="w-full aspect-video bg-black rounded-neo border-2 border-dark flex items-center justify-center relative overflow-hidden">
@@ -298,11 +300,11 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
         </NeoContainer>
 
         <NeoContainer title="Apps & Games">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 items-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 items-center">
             <select
               value={screenRes}
               onChange={(e) => setScreenRes(Number(e.target.value))}
-              className="p-2 border-2 border-dark rounded-neo outline-none bg-white text-sm font-bold"
+              className="p-2 border-2 border-dark rounded-neo outline-none bg-white text-sm font-bold text-black"
               disabled={isSharing}
             >
               <option value={480}>480p</option>
@@ -315,7 +317,7 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
             <select
               value={screenFps}
               onChange={(e) => setScreenFps(Number(e.target.value))}
-              className="p-2 border-2 border-dark rounded-neo outline-none bg-white text-sm font-bold"
+              className="p-2 border-2 border-dark rounded-neo outline-none bg-white text-sm font-bold text-black"
               disabled={isSharing}
             >
               <option value={15}>15 FPS</option>
@@ -323,23 +325,23 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
               <option value={60}>60 FPS</option>
             </select>
 
-            <NeoButton colorClass={isSharing ? 'bg-primary' : 'bg-secondary'} onClick={toggleScreenShare}>
+            <NeoButton colorClass={isSharing ? 'bg-primary text-black' : 'bg-secondary text-black'} onClick={toggleScreenShare}>
               {isSharing ? 'Stop Share' : 'Share Screen'}
             </NeoButton>
 
-            <NeoButton colorClass={isCamOn ? 'bg-primary' : 'bg-white'} onClick={toggleCamera}>
+            <NeoButton colorClass={isCamOn ? 'bg-primary text-black' : 'bg-white text-black'} onClick={toggleCamera}>
               {isCamOn ? 'Camera Off' : 'Camera On'}
             </NeoButton>
 
-            <NeoButton colorClass={isMicOn ? 'bg-primary' : 'bg-white'} onClick={toggleMic}>
+            <NeoButton colorClass={isMicOn ? 'bg-primary text-black' : 'bg-white text-black'} onClick={toggleMic}>
               {isMicOn ? 'Mute Mic' : 'Unmute Mic'}
             </NeoButton>
 
-            <NeoButton colorClass={activeMedia === 'ludo' ? 'bg-primary' : 'bg-accent'} onClick={toggleLudo}>
+            <NeoButton colorClass={activeMedia === 'ludo' ? 'bg-primary text-black' : 'bg-accent text-black'} onClick={toggleLudo}>
               {activeMedia === 'ludo' ? 'Close Ludo' : 'Ludo'}
             </NeoButton>
 
-            <NeoButton colorClass="bg-primary">Chess</NeoButton>
+            <NeoButton colorClass="bg-primary text-black">Chess</NeoButton>
           </div>
         </NeoContainer>
       </div>
@@ -369,7 +371,7 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
             {messages.map((m, i) => (
               <div key={i} className={`p-2 rounded-lg border-2 border-dark ${m.sender === 'System' ? 'bg-accent/50 text-sm font-bold' : 'bg-bgBase'}`}>
                 <strong className="block text-xs text-primary">{m.sender}</strong>
-                <span className="text-sm">{m.text}</span>
+                <span className="text-sm text-black">{m.text}</span>
               </div>
             ))}
             <div ref={messagesEndRef} />
@@ -381,9 +383,11 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 p-2 border-2 border-dark rounded-neo outline-none"
+              className="flex-1 p-2 border-2 border-dark rounded-neo outline-none bg-white text-black"
             />
-            <NeoButton colorClass="bg-secondary" type="submit">Send</NeoButton>
+            <NeoButton colorClass="bg-secondary text-black" type="submit">
+              Send
+            </NeoButton>
           </form>
         </NeoContainer>
       </div>
