@@ -1,34 +1,22 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+// Hardcoded direct URL to your live Render backend
+const BACKEND_URL = 'https://watchparty-wqd2.onrender.com';
+
 export const useSocket = (roomId: string, username: string) => {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    // Get the raw environment variable
-    const rawUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
-
-    // SANITIZER: Automatically strips out accidental typos like double protocols 
-    // (e.g., turns "https://https://foo" or "wss://https://foo" into a clean domain)
-    const cleanDomain = rawUrl
-      .replace(/^wss?:\/\//i, '')
-      .replace(/^https?:\/\//i, '');
-
-    // Force standard secure connection for production, HTTP for local
-    const socketUrl = cleanDomain.includes('localhost') 
-      ? `http://${cleanDomain}` 
-      : `https://${cleanDomain}`;
-
-    console.log('Connecting to sanitized socket URL:', socketUrl);
-
-    const socketIo = io(socketUrl, {
+    const socketIo = io(BACKEND_URL, {
       transports: ['websocket', 'polling'],
+      withCredentials: false
     });
 
     setSocket(socketIo);
 
     socketIo.on('connect', () => {
-      console.log('Successfully connected to server:', socketIo.id);
+      console.log('Connected to backend:', socketIo.id);
       socketIo.emit('join-room', roomId, username);
     });
 
