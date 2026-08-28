@@ -49,6 +49,10 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
   const [remoteCameras, setRemoteCameras] = useState<string[]>([]);
   const lastCamFrames = useRef<Record<string, string>>({});
 
+  // Adjustable Camera Layout State
+  const [camSize, setCamSize] = useState<number>(120); // Width/Height in px
+  const [isCamDrawerOpen, setIsCamDrawerOpen] = useState(true);
+
   const [isMicOn, setIsMicOn] = useState(false);
   const [localMicStream, setLocalMicStream] = useState<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -256,8 +260,10 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
 
   if (!isMounted) return <main className="min-h-screen p-6 md:p-12 flex flex-col xl:flex-row gap-6"></main>;
 
+  const hasAnyCamera = isCamOn || remoteCameras.length > 0;
+
   return (
-    <main className="min-h-screen p-6 md:p-12 flex flex-col xl:flex-row gap-6">
+    <main className="min-h-screen p-6 md:p-12 flex flex-col xl:flex-row gap-6 bg-[#F4EBE1]">
       <div className="flex-1 flex flex-col gap-6">
         <NeoContainer title={`Room: ${roomId} | Big Screen`}>
           <form onSubmit={handleLoadVideo} className="flex gap-2 mb-4">
@@ -347,29 +353,83 @@ export default function RoomPage({ params }: { params: { roomId?: string; id?: s
       </div>
 
       <div className="w-full xl:w-96 flex flex-col gap-6">
-        {(isCamOn || remoteCameras.length > 0) && (
+        {/* Adjustable Cameras Section */}
+        {hasAnyCamera && (
           <NeoContainer title="Cameras" className="shrink-0">
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {isCamOn && (
-                <div className="relative w-28 h-28 shrink-0 rounded-neo border-2 border-dark overflow-hidden bg-black shadow-neo-pressed">
-                  <video ref={localCamVideoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" />
-                  <span className="absolute bottom-1 left-1 bg-dark text-white text-[10px] px-2 py-0.5 rounded-sm font-bold">You</span>
-                </div>
-              )}
-              {remoteCameras.map((sender) => (
-                <div key={sender} className="relative w-28 h-28 shrink-0 rounded-neo border-2 border-dark overflow-hidden bg-black shadow-neo-pressed">
-                  <img id={`cam-${sender}`} src={lastCamFrames.current[sender] || ''} className="w-full h-full object-cover transform scale-x-[-1]" alt="Peer" />
-                  <span className="absolute bottom-1 left-1 bg-dark text-white text-[10px] px-2 py-0.5 rounded-sm font-bold">Peer</span>
-                </div>
-              ))}
+            {/* Camera Controls Toolbar */}
+            <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b-2 border-dark text-xs font-bold">
+              <div className="flex items-center gap-2">
+                <span>Size:</span>
+                <input
+                  type="range"
+                  min={80}
+                  max={220}
+                  value={camSize}
+                  onChange={(e) => setCamSize(Number(e.target.value))}
+                  className="w-24 accent-[#FF6B6B] cursor-pointer"
+                />
+                <span className="text-[10px] font-mono">{camSize}px</span>
+              </div>
+              <button
+                onClick={() => setIsCamDrawerOpen(!isCamDrawerOpen)}
+                className="px-2 py-0.5 bg-white border border-dark rounded text-[10px] hover:bg-neutral-100"
+              >
+                {isCamDrawerOpen ? 'Collapse ▲' : 'Expand ▼'}
+              </button>
             </div>
+
+            {/* Adjustable Dynamic Stream List */}
+            {isCamDrawerOpen && (
+              <div className="flex gap-3 overflow-x-auto pb-2 items-center">
+                {isCamOn && (
+                  <div
+                    style={{ width: `${camSize}px`, height: `${camSize}px` }}
+                    className="relative shrink-0 rounded-neo border-2 border-dark overflow-hidden bg-black shadow-neo-pressed transition-all duration-150"
+                  >
+                    <video
+                      ref={localCamVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover transform scale-x-[-1]"
+                    />
+                    <span className="absolute bottom-1 left-1 bg-dark text-white text-[10px] px-2 py-0.5 rounded-sm font-bold">
+                      You
+                    </span>
+                  </div>
+                )}
+                {remoteCameras.map((sender) => (
+                  <div
+                    key={sender}
+                    style={{ width: `${camSize}px`, height: `${camSize}px` }}
+                    className="relative shrink-0 rounded-neo border-2 border-dark overflow-hidden bg-black shadow-neo-pressed transition-all duration-150"
+                  >
+                    <img
+                      id={`cam-${sender}`}
+                      src={lastCamFrames.current[sender] || ''}
+                      className="w-full h-full object-cover transform scale-x-[-1]"
+                      alt="Peer"
+                    />
+                    <span className="absolute bottom-1 left-1 bg-dark text-white text-[10px] px-2 py-0.5 rounded-sm font-bold">
+                      Peer
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </NeoContainer>
         )}
 
+        {/* Chat Section */}
         <NeoContainer title="Party Chat" className="flex-1 min-h-[400px] flex flex-col">
           <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-2">
             {messages.map((m, i) => (
-              <div key={i} className={`p-2 rounded-lg border-2 border-dark ${m.sender === 'System' ? 'bg-accent/50 text-sm font-bold' : 'bg-bgBase'}`}>
+              <div
+                key={i}
+                className={`p-2 rounded-lg border-2 border-dark ${
+                  m.sender === 'System' ? 'bg-accent/50 text-sm font-bold' : 'bg-bgBase'
+                }`}
+              >
                 <strong className="block text-xs text-primary">{m.sender}</strong>
                 <span className="text-sm text-black">{m.text}</span>
               </div>
