@@ -50,7 +50,6 @@ const SAFE_ZONES = [0, 8, 13, 21, 26, 34, 39, 47];
 const colorMap = { red: '#ef4444', green: '#16a34a', yellow: '#facc15', blue: '#3b82f6' };
 const bgClassMap = { red: 'bg-[#e33529]', green: 'bg-[#009b40]', yellow: 'bg-[#ffcc00]', blue: 'bg-[#1888fd]' };
 
-// --- CUSTOM SVG ASSETS ---
 const MapPinToken = ({ color }: { color: string }) => (
   <svg viewBox="0 0 24 36" className="w-full h-full drop-shadow-md">
     <path d="M12 2C6.48 2 2 6.48 2 12c0 7.5 10 22 10 22s10-14.5 10-22c0-5.52-4.48-10-10-10z" fill={color} stroke="white" strokeWidth="2" />
@@ -91,18 +90,45 @@ const DiceFace = ({ value }: { value: number | null }) => {
 };
 
 export const LudoBoard: React.FC<{ socket: Socket | null }> = ({ socket }) => {
-  const [game, setGame] = useState<LudoState | null>(null);
+  const [game, setGame] = useState<LudoState>({
+    activePlayers: ['red', 'yellow'],
+    turn: 'red',
+    dice: null,
+    positions: {
+      red: [-1, -1, -1, -1],
+      green: [-1, -1, -1, -1],
+      yellow: [-1, -1, -1, -1],
+      blue: [-1, -1, -1, -1],
+    },
+    hasRolled: false,
+    isRolling: false,
+    status: 'setup',
+    owners: {
+      red: null,
+      green: null,
+      yellow: null,
+      blue: null,
+    },
+  });
 
   useEffect(() => {
     if (!socket) return;
-    socket.emit('get-ludo-state');
-    socket.on('ludo-update', (state: LudoState) => setGame(state));
+
+    const requestState = () => {
+      socket.emit('get-ludo-state');
+    };
+
+    requestState();
+    socket.on('connect', requestState);
+    socket.on('ludo-update', (state: LudoState) => {
+      if (state) setGame(state);
+    });
+
     return () => {
+      socket.off('connect', requestState);
       socket.off('ludo-update');
     };
   }, [socket]);
-
-  if (!game) return <div className="text-center font-bold p-8 text-neutral-800">Loading Arena...</div>;
 
   const startGame = (count: number) => socket?.emit('ludo-start-game', { playerCount: count });
   const rollDice = () => socket?.emit('ludo-roll-dice');
@@ -115,9 +141,9 @@ export const LudoBoard: React.FC<{ socket: Socket | null }> = ({ socket }) => {
         <div className="bg-white border-4 border-black rounded-xl p-8 text-center max-w-sm w-full shadow-2xl">
           <h2 className="text-2xl font-black mb-6 text-neutral-800">Select Players</h2>
           <div className="flex flex-col gap-4">
-            <NeoButton colorClass="bg-red-400" onClick={() => startGame(2)}>2 Players (Red vs Yellow)</NeoButton>
-            <NeoButton colorClass="bg-green-400" onClick={() => startGame(3)}>3 Players</NeoButton>
-            <NeoButton colorClass="bg-blue-400" onClick={() => startGame(4)}>4 Players</NeoButton>
+            <NeoButton colorClass="bg-red-400 text-black" onClick={() => startGame(2)}>2 Players (Red vs Yellow)</NeoButton>
+            <NeoButton colorClass="bg-green-400 text-black" onClick={() => startGame(3)}>3 Players</NeoButton>
+            <NeoButton colorClass="bg-blue-400 text-black" onClick={() => startGame(4)}>4 Players</NeoButton>
           </div>
         </div>
       </div>
@@ -214,7 +240,6 @@ export const LudoBoard: React.FC<{ socket: Socket | null }> = ({ socket }) => {
         </div>
 
         <div className="relative w-full aspect-square bg-white border-4 border-white shadow-2xl">
-          {/* Path Perimeter Boxes */}
           {PATH_COORDS.map((coord, idx) => {
             const isSafe = SAFE_ZONES.includes(idx);
             const isStart = [0, 13, 26, 39].includes(idx);
@@ -243,7 +268,6 @@ export const LudoBoard: React.FC<{ socket: Socket | null }> = ({ socket }) => {
             );
           })}
 
-          {/* Home Stretches */}
           {(['red', 'green', 'yellow', 'blue'] as const).map(color =>
             HOME_STRETCH[color].map((coord, idx) => (
               <div
@@ -254,7 +278,6 @@ export const LudoBoard: React.FC<{ socket: Socket | null }> = ({ socket }) => {
             ))
           )}
 
-          {/* Corner Bases */}
           <div className="absolute top-0 left-0" style={{ width: '40%', height: '40%' }}>
             <BaseBox color="green" icon="dots" />
           </div>
@@ -268,7 +291,6 @@ export const LudoBoard: React.FC<{ socket: Socket | null }> = ({ socket }) => {
             <BaseBox color="red" icon="crown2" />
           </div>
 
-          {/* Center Arrows */}
           <div className="absolute top-[40%] left-[40%] w-[20%] h-[20%] border-[0.5px] border-black overflow-hidden relative">
             <div className="absolute inset-0 bg-[#facc15]" style={{ clipPath: 'polygon(0 0, 100% 0, 50% 50%)' }} />
             <div className="absolute inset-0 bg-[#3b82f6]" style={{ clipPath: 'polygon(100% 0, 100% 100%, 50% 50%)' }} />
@@ -277,7 +299,6 @@ export const LudoBoard: React.FC<{ socket: Socket | null }> = ({ socket }) => {
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[8px] font-black text-white z-10 text-center uppercase drop-shadow-md">Home</div>
           </div>
 
-          {/* Tokens */}
           {(['red', 'green', 'yellow', 'blue'] as const).map((color) =>
             game.positions[color].map((pos, idx) => {
               if (pos === 57 || !game.activePlayers.includes(color)) return null;
@@ -303,7 +324,6 @@ export const LudoBoard: React.FC<{ socket: Socket | null }> = ({ socket }) => {
           )}
         </div>
 
-        {/* Bottom HUD */}
         <div className="flex justify-between items-start w-full mt-2 px-1">
           <HUDPanel color="red" />
           <HUDPanel color="blue" isReversed />
