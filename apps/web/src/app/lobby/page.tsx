@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 const BACKEND_URL = 'https://watchparty-wqd2.onrender.com';
 
@@ -14,8 +16,20 @@ interface PublicRoom {
 export default function LobbyPage() {
   const router = useRouter();
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [username, setUsername] = useState('Guest');
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
   const [privateCode, setPrivateCode] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUsername(user.displayName || user.email?.split('@')[0] || 'Guest');
+      } else {
+        router.push('/login');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     const socketIo = io(BACKEND_URL, {
@@ -26,11 +40,9 @@ export default function LobbyPage() {
     setSocket(socketIo);
 
     socketIo.on('connect', () => {
-      // Request active rooms list upon connection
       socketIo.emit('get-public-rooms');
     });
 
-    // Listen for live room updates
     socketIo.on('public-rooms-update', (rooms: PublicRoom[]) => {
       setPublicRooms(rooms);
     });
@@ -39,6 +51,15 @@ export default function LobbyPage() {
       socketIo.disconnect();
     };
   }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+  };
 
   const handleCreateRoom = (isPublic: boolean) => {
     const newRoomId = Math.random().toString(36).substring(2, 9);
@@ -57,12 +78,20 @@ export default function LobbyPage() {
 
   return (
     <div className="min-h-screen bg-[#F4EBE1] p-8 text-neutral-800">
-      {/* Lobby header and cards */}
       <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-3xl font-black text-center">Welcome!</h1>
+        {/* Header with Title and Sign Out Button */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-black">Welcome, {username}!</h1>
+          <button
+            onClick={handleSignOut}
+            className="px-5 py-2 bg-[#FF6B6B] hover:bg-[#ff5252] border-2 border-black rounded-xl font-bold shadow-[2px_2px_0px_0px_#000] transition active:translate-x-[1px] active:translate-y-[1px]"
+          >
+            Sign Out
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Create Rooms */}
+          {/* Create Room */}
           <div className="bg-[#66C6BA] border-2 border-black rounded-2xl p-6 shadow-[4px_4px_0px_0px_#000]">
             <h2 className="text-xl font-bold mb-4">Create a Room</h2>
             <div className="space-y-3">
